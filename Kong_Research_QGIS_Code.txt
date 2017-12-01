@@ -1,0 +1,13 @@
+from PyQt4.QtCore import QFileSystemWatcher
+
+vl = QgsMapLayerRegistry.instance().mapLayersByName('NewLocationData')[0]
+iface.setActiveLayer(vl)
+
+
+def refreshLayer():
+    iface.activeLayer().setCacheImage( None )
+    iface.activeLayer().triggerRepaint()
+
+watcher = QFileSystemWatcher()
+watcher.addPath( "C:/Users/hkk315/NewLocationData.csv" )
+watcher.fileChanged.connect( refreshLayer )

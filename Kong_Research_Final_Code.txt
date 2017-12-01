@@ -1,0 +1,561 @@
+    import json
+    import sys
+    import urllib2
+    import pandas as pd
+    import time
+    import csv
+    import math
+    import matplotlib.pyplot as plt
+    import re
+    import datetime
+
+    from math import radians, sin, cos, acos
+    vlow=0
+    vup=0
+    favstopid = []
+    kccstopid =[]
+    
+    def get_sec(r,v,k):
+        return (r*60*60)+ (v*60)+ k
+    
+    def relget_sec(ho,mi):
+        return (ho*60*60)+ (mi*60)
+    
+    def dist_bus (slat, slon, elat, elon):
+        return (6371.01 * acos (sin(slat)*sin(elat)+ cos(slat)*cos(elat)*cos(slon-elon)))
+    
+    x = raw_input( 'What is Bus stop id? ')
+    print 'The Bus Stop ID is ', x
+    sto= int (x)
+    relis=[]
+    srelis= []
+    relis= [300000,300012,300031,300040,901295]
+    srelis= [301614,300099,306457,308045,901472]
+
+    with open('C:/Users/Kong/Desktop/CSVB1BusSTOPTo4Av.csv') as csvDataFile:
+        csvReader = csv.reader(csvDataFile)
+        for row in csvReader:
+            favstopid.append(row [1])
+            
+            if row[1] == x:
+                h= row [2]
+                j= row [3]
+                
+                print ("To 4 Av direction")
+    
+    
+    with open('C:/Users/Kong/Desktop/CSVB1BusSTOPToKCC.csv') as csvDataFile:
+        csvReader = csv.reader(csvDataFile)
+        for line in csvReader:
+            kccstopid.append(line [1])
+            
+            if line[1] == x:
+                q= line [2]
+                a= line [3]
+                
+                print ("To KCC direction")
+
+        y=[]        
+        vehid=[]
+        lat=[]
+        lon=[]
+        arrtim =[]
+        tdist=[]
+        tcount=[]
+        sdist=[]
+        stim=[]
+        svehid=[]
+        fdirec=[]
+        sdirec=[]
+        sdat=[]
+        l=[]
+        b=[]
+
+    count = 0
+    number=0
+    loop = 0
+    while(True):
+        mykey = '9a335b61-3fbd-40a0-ae00-65776f038998'
+        busline = 'B1'
+
+        if __name__=='__main__':
+
+         url= 'http://api.prod.obanyc.com/api/siri/vehicle-monitoring.json?key=%s&VehicleMonitoringDetailLevel=calls&LineRef=%s' % (mykey, busline)#(sys.argv[1],sys.argv[2])
+        #input KEY & Bus line number
+         request = urllib2.urlopen(url) 
+         BusFile = json.load(request)
+         VehActivity = BusFile['Siri']['ServiceDelivery']['VehicleMonitoringDelivery'][0]['VehicleActivity'] #use Json viewer to see the structure
+
+        print ('\n')
+        print ("Bus Line: %s" % busline)
+        if (x in favstopid):
+                print ("Direction: TO Bay Ridge 4 Av")
+        if (x in kccstopid):
+                print ("Direction: TO Manhattan Beach Kingsboro CC")
+        
+        print ("Bus stop ID: %s " %x)
+                
+        
+        i = 0 #initialize the counter for number of active buses
+        
+        
+        print ("Loop: %s" %loop)
+        if ((loop>60)and (number>3)):
+            svehid.remove(svehid[0])
+            number = number - 1
+            
+        
+        for bus in VehActivity:
+            curdirec = bus['MonitoredVehicleJourney']['DirectionRef']
+            w =int(curdirec)
+            fdirec.append(bus['MonitoredVehicleJourney']['DirectionRef'])
+
+
+            curvehid = bus['MonitoredVehicleJourney']['VehicleRef']
+            vehid.append(bus['MonitoredVehicleJourney']['VehicleRef'])
+
+            curlat = bus['MonitoredVehicleJourney']['VehicleLocation']['Latitude']
+            curlon = bus['MonitoredVehicleJourney']['VehicleLocation']['Longitude'] 
+            lat.append(bus['MonitoredVehicleJourney']['VehicleLocation']['Latitude'])
+            lon.append(bus['MonitoredVehicleJourney']['VehicleLocation']['Longitude']) 
+
+            curtim = bus['RecordedAtTime']
+            arrtim.append(bus['RecordedAtTime'])
+            u = re.split ("T|\.|\n",curtim)
+            y.append (u)
+            
+            
+            
+            vlat = radians(float(curlat))
+            vlon= radians (float(curlon))
+
+            
+            if (x in favstopid):
+                
+                ulat= radians (float(h))
+                ulon= radians (float(j))
+                
+                dist = dist_bus (ulat, ulon, vlat, vlon)
+                
+               
+            if (x in kccstopid):
+                
+                klat = radians (float(q))
+                klon = radians (float(a))
+                
+                dist = dist_bus (klat, klon, vlat, vlon)
+            
+            tdist.append(dist)
+
+
+            if (x in favstopid) and(w == 0)and((curvehid) not in svehid)and (dist < 0.05):
+
+                sdist.append (dist)
+
+                sdat.append(u[0])
+
+                stim.append(u[1])
+
+                svehid.append(curvehid)
+
+                sdirec.append(curdirec)
+
+                count = count + 1
+                number = number + 1
+            
+
+                tcount.append (count)
+
+                      
+            
+            if (x in kccstopid) and(w == 1)and((curvehid) not in svehid)and (dist < 0.05):
+
+                sdist.append (dist)
+
+                sdat.append(u[0])
+
+                stim.append(u[1])
+
+                svehid.append(curvehid)
+
+                sdirec.append(curdirec)
+
+                count = count + 1
+                number = number + 1
+
+                tcount.append (count)
+
+                
+            i = i+1
+            
+        
+        p=pd.DataFrame (y)
+        sort_all_time =(sorted (p[1]))
+
+        sort_tim=(sorted(stim))
+        
+        l=[]
+        
+        temnum=0
+        temdata=[]
+        temrecord=[]
+        for element in sort_tim:
+            
+            c = re.split (":",element)
+                
+            g = int(c[0])
+            m = int (c[1])
+            s = int(c[2])
+            
+            
+            d = get_sec (g,m,s)
+            str(d)
+            l.append(d)
+        
+        if (0<count<3):
+            vlow= l[0]-600
+            vup= l[0]+1800
+            
+        if ((loop>50)and (count>2)):
+            vup=vup+30
+        
+        rela=[]
+        relb=[]
+           
+        if ((count>1)and(sto==300000)):
+            print vlow
+            print vup
+            with open('C:\Users\Kong\Desktop\To4Av.csv','rb') as csvDataFile:
+                csvReader = csv.reader(csvDataFile, delimiter=';')
+                for eachrow in csvReader:
+                    cspl=re.split (",",eachrow[1])
+                    dspl=re.split (":",cspl[0])
+                    relh=int (dspl[0])
+                    relm=int(dspl[1])
+                    tot=relget_sec(relh, relm)
+                    rela.append (cspl)
+                    relb.append (tot)
+                    
+                for subelem in relb:
+                    if (vlow<subelem<vup):
+                        temdata.append (subelem)
+                        temnum=temnum+1
+                        temrecord.append(temnum)
+    
+            
+            print ("Table acoording to bus schedule")
+            
+            wf = pd.DataFrame()
+            wf['Time'] = temdata
+            wf['count'] = temrecord
+            wf.to_csv('regularscheuleGraphTesting.csv')
+            print wf
+            
+        if ((count>1)and (sto==300012)):
+            print vlow
+            print vup
+            with open('C:\Users\Kong\Desktop\To4Av.csv','rb') as csvDataFile:
+                csvReader = csv.reader(csvDataFile, delimiter=';')
+                for eachrow in csvReader:
+                    cspl=re.split (",",eachrow[3])
+                    dspl=re.split (":",cspl[0])
+                    relh=int (dspl[0])
+                    relm=int(dspl[1])
+                    tot=relget_sec(relh, relm)
+                    rela.append (cspl)
+                    relb.append (tot)
+                    
+                for subelem in relb:
+                    if (vlow<subelem<vup):
+                        temdata.append (subelem)
+                        temnum=temnum+1
+                        temrecord.append(temnum)
+    
+            
+            print ("Table acoording to bus schedule")
+            
+            wf = pd.DataFrame()
+            
+            wf['Time'] = temdata
+            wf['count'] = temrecord
+            wf.to_csv('regularscheuleGraphTesting.csv')
+            print wf
+            
+        if ((count>1)and (sto==300031)):
+            print vlow
+            print vup
+            with open('C:\Users\Kong\Desktop\To4Av.csv','rb') as csvDataFile:
+                csvReader = csv.reader(csvDataFile, delimiter=';')
+                for eachrow in csvReader:
+                    cspl=re.split (",",eachrow[5])
+                    dspl=re.split (":",cspl[0])
+                    relh=int (dspl[0])
+                    relm=int(dspl[1])
+                    tot=relget_sec(relh, relm)
+                    rela.append (cspl)
+                    relb.append (tot)
+                    
+                for subelem in relb:
+                    if (vlow<subelem<vup):
+                        temdata.append (subelem)
+                        temnum=temnum+1
+                        temrecord.append(temnum)
+    
+            
+            print ("Table acoording to bus schedule")
+            
+            wf = pd.DataFrame()
+            
+            wf['Time'] = temdata
+            wf['count'] = temrecord
+            wf.to_csv('regularscheuleGraphTesting.csv')
+            print wf
+        
+        if ((count>1)and (sto==300040)):
+            print vlow
+            print vup
+            with open('C:\Users\Kong\Desktop\To4Av.csv','rb') as csvDataFile:
+                csvReader = csv.reader(csvDataFile, delimiter=';')
+                for eachrow in csvReader:
+                    cspl=re.split (",",eachrow[7])
+                    dspl=re.split (":",cspl[0])
+                    relh=int (dspl[0])
+                    relm=int(dspl[1])
+                    tot=relget_sec(relh, relm)
+                    rela.append (cspl)
+                    relb.append (tot)
+                    
+                for subelem in relb:
+                    if (vlow<subelem<vup):
+                        temdata.append (subelem)
+                        temnum=temnum+1
+                        temrecord.append(temnum)
+    
+            
+            print ("Table acoording to bus schedule")
+            
+            wf = pd.DataFrame()
+            
+            wf['Time'] = temdata
+            wf['count'] = temrecord
+            wf.to_csv('regularscheuleGraphTesting.csv')
+            print wf
+            
+        if ((count>1)and (sto==901295)):
+            print vlow
+            print vup
+            with open('C:\Users\Kong\Desktop\To4Av.csv','rb') as csvDataFile:
+                csvReader = csv.reader(csvDataFile, delimiter=';')
+                for eachrow in csvReader:
+                    cspl=re.split (",",eachrow[9])
+                    dspl=re.split (":",cspl[0])
+                    relh=int (dspl[0])
+                    relm=int(dspl[1])
+                    tot=relget_sec(relh, relm)
+                    rela.append (cspl)
+                    relb.append (tot)
+                    
+                for subelem in relb:
+                    if (vlow<subelem<vup):
+                        temdata.append (subelem)
+                        temnum=temnum+1
+                        temrecord.append(temnum)
+    
+            
+            print ("Table acoording to bus schedule")
+            
+            wf = pd.DataFrame()
+            
+            wf['Time'] = temdata
+            wf['count'] = temrecord
+            wf.to_csv('regularscheuleGraphTesting.csv')
+            print wf
+            
+        if ((count>1)and (sto==301614)):
+            print vlow
+            print vup
+            with open('C:\Users\Kong\Desktop\ToKCC.csv','rb') as csvDataFile:
+                csvReader = csv.reader(csvDataFile, delimiter=';')
+                for eachrow in csvReader:
+                    cspl=re.split (",",eachrow[1])
+                    dspl=re.split (":",cspl[0])
+                    relh=int (dspl[0])
+                    relm=int(dspl[1])
+                    tot=relget_sec(relh, relm)
+                    rela.append (cspl)
+                    relb.append (tot)
+                    
+                for subelem in relb:
+                    if (vlow<subelem<vup):
+                        temdata.append (subelem)
+                        temnum=temnum+1
+                        temrecord.append(temnum)
+    
+            
+            print ("Table acoording to bus schedule")
+            
+            wf = pd.DataFrame()
+            
+            wf['Time'] = temdata
+            wf['count'] = temrecord
+            wf.to_csv('regularscheuleGraphTesting.csv')
+            print wf
+            
+        if ((count>1)and (sto==300099)):
+            print vlow
+            print vup
+            with open('C:\Users\Kong\Desktop\ToKCC.csv','rb') as csvDataFile:
+                csvReader = csv.reader(csvDataFile, delimiter=';')
+                for eachrow in csvReader:
+                    cspl=re.split (",",eachrow[3])
+                    dspl=re.split (":",cspl[0])
+                    relh=int (dspl[0])
+                    relm=int(dspl[1])
+                    tot=relget_sec(relh, relm)
+                    rela.append (cspl)
+                    relb.append (tot)
+                    
+                for subelem in relb:
+                    if (vlow<subelem<vup):
+                        temdata.append (subelem)
+                        temnum=temnum+1
+                        temrecord.append(temnum)
+    
+            
+            print ("Table acoording to bus schedule")
+            
+            wf = pd.DataFrame()
+            
+            wf['Time'] = temdata
+            wf['count'] = temrecord
+            wf.to_csv('regularscheuleGraphTesting.csv')
+            print wf
+            
+        if ((count>1)and (sto==306457)):
+            print vlow
+            print vup
+            with open('C:\Users\Kong\Desktop\ToKCC.csv','rb') as csvDataFile:
+                csvReader = csv.reader(csvDataFile, delimiter=';')
+                for eachrow in csvReader:
+                    cspl=re.split (",",eachrow[5])
+                    dspl=re.split (":",cspl[0])
+                    relh=int (dspl[0])
+                    relm=int(dspl[1])
+                    tot=relget_sec(relh, relm)
+                    rela.append (cspl)
+                    relb.append (tot)
+                    
+                for subelem in relb:
+                    if (vlow<subelem<vup):
+                        temdata.append (subelem)
+                        temnum=temnum+1
+                        temrecord.append(temnum)
+    
+            
+            print ("Table acoording to bus schedule")
+            
+            wf = pd.DataFrame()
+            
+            wf['Time'] = temdata
+            wf['count'] = temrecord
+            wf.to_csv('regularscheuleGraphTesting.csv')
+            print wf
+            
+        if ((count>1)and (sto==308045)):
+            print vlow
+            print vup
+            with open('C:\Users\Kong\Desktop\ToKCC.csv','rb') as csvDataFile:
+                csvReader = csv.reader(csvDataFile, delimiter=';')
+                for eachrow in csvReader:
+                    cspl=re.split (",",eachrow[7])
+                    dspl=re.split (":",cspl[0])
+                    relh=int (dspl[0])
+                    relm=int(dspl[1])
+                    tot=relget_sec(relh, relm)
+                    rela.append (cspl)
+                    relb.append (tot)
+                    
+                for subelem in relb:
+                    if (vlow<subelem<vup):
+                        temdata.append (subelem)
+                        temnum=temnum+1
+                        temrecord.append(temnum)
+    
+            
+            print ("Table acoording to bus schedule")
+            
+            wf = pd.DataFrame()
+            
+            wf['Time'] = temdata
+            wf['count'] = temrecord
+            wf.to_csv('regularscheuleGraphTesting.csv')
+            print wf
+        
+        if ((count>1)and (sto==901472)):
+            print vlow
+            print vup
+            with open('C:\Users\Kong\Desktop\ToKCC.csv','rb') as csvDataFile:
+                csvReader = csv.reader(csvDataFile, delimiter=';')
+                for eachrow in csvReader:
+                    cspl=re.split (",",eachrow[9])
+                    dspl=re.split (":",cspl[0])
+                    relh=int (dspl[0])
+                    relm=int(dspl[1])
+                    tot=relget_sec(relh, relm)
+                    rela.append (cspl)
+                    relb.append (tot)
+                    
+                for subelem in relb:
+                    if (vlow<subelem<vup):
+                        temdata.append (subelem)
+                        temnum=temnum+1
+                        temrecord.append(temnum)
+    
+            
+            print ("Table acoording to bus schedule")
+            
+            wf = pd.DataFrame()
+            
+            wf['Time'] = temdata
+            wf['count'] = temrecord
+            wf.to_csv('regularscheuleGraphTesting.csv')
+            print wf
+        
+        if ((count==0)or (count==1)):
+            
+            print ("Number of the buses passing through the stop ID %s : %s" %(x,count))
+            print ('Not enough information for drawing the graph.')
+            
+    
+        if (count>1):
+            b = pd.DataFrame (l)
+            cf = pd.DataFrame()
+            cf['HH:MM:SS'] = sort_tim
+            cf['Time']= b
+            cf['Number of Buses']=tcount
+            
+            cf.to_csv('FinalTableData.csv')
+            print("\n")
+            print ("Table acoording to Real time Data")
+            print cf
+            
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.step(l,tcount,color='b',label='Real time data')
+            if ((sto in relis)or (sto in srelis)):
+                ax.step(temdata,temrecord,color='g',label='Based on Bus Schedule')
+                ax.legend()
+                
+            ax.set_xlabel('Time (s)')
+            ax.set_ylabel('No. of Buses')
+            ax.set_title('Buses at the Stop ID : %s'%x)
+            ax.legend()
+           
+        plt.show()
+       
+        
+        
+
+        time.sleep(32)
+        loop=loop+1
+        
