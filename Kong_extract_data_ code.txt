@@ -1,0 +1,42 @@
+import json
+import sys
+import urllib2
+import pandas as pd
+import time
+
+while(True):
+    mykey = '9a335b61-3fbd-40a0-ae00-65776f038998'
+    busline = 'B1'
+
+    if __name__=='__main__':
+
+     url= 'http://api.prod.obanyc.com/api/siri/vehicle-monitoring.json?key=%s&VehicleMonitoringDetailLevel=calls&LineRef=%s' % (mykey, busline)#(sys.argv[1],sys.argv[2])
+    #input KEY & Bus line number
+     request = urllib2.urlopen(url) 
+     BusFile = json.load(request)
+     VehActivity = BusFile['Siri']['ServiceDelivery']['VehicleMonitoringDelivery'][0]['VehicleActivity'] #use Json viewer to see the structure
+    
+    print ("The information below shows the locations of active MTA buses.")
+    print ("Bus Line: %s" % busline)
+
+    i = 0 #initialize the counter for number of active buses
+
+    lat=[]
+    lon=[]
+
+    for bus in VehActivity:
+        curlat = bus['MonitoredVehicleJourney']['VehicleLocation']['Latitude']
+        curlon = bus['MonitoredVehicleJourney']['VehicleLocation']['Longitude'] 
+        lat.append(bus['MonitoredVehicleJourney']['VehicleLocation']['Latitude'])
+        lon.append(bus['MonitoredVehicleJourney']['VehicleLocation']['Longitude'])  
+
+        print ("Bus %s is at latitude %s and longitude %s" % (i,curlat, curlon))
+        i = i+1
+    print ("Number of Active Buses:%s" % i)
+
+    df = pd.DataFrame()
+    df['lat']=lat
+    df['lon']=lon
+
+    df.to_csv('NewLocationData.csv')
+    time.sleep(32)
